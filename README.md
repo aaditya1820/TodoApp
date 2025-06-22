@@ -1,3 +1,2 @@
 # TodoApp
-MERN + React Js + MongoDb + TailwindCSS
-App to handle and maintain your daily todos
+Made with MERN + React Js + MongoDb + TailwindCSS Which handle and maintain your daily todos
