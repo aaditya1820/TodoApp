@@ -4,41 +4,42 @@ import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
 function Home() {
+  const navigateTo = useNavigate();
   const [todos, setTodos] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [newTodo, setNewTodo] = useState("");
 
   useEffect(() => {
-    const fetchtodos = async () => {
+    const fetchTodos = async () => {
       try {
         setLoading(true);
-        const response = await axios.get("http://localhost:4002/todo/fetch", {
-          withCredentials: true,
-          headers: { "Content-Type": "application/json" },
-        });
+        const response = await axios.get(
+          "http://localhost:4002/todo/fetch",
+          { withCredentials: true }
+        );
         setTodos(response.data.todos);
         setError(null);
-      } catch (error) {
+      } catch {
         setError("Failed to fetch todos");
       } finally {
         setLoading(false);
       }
     };
-    fetchtodos();
+    fetchTodos();
   }, []);
 
   const todoCreate = async () => {
-    if (!newTodo) return;
+    if (!newTodo.trim()) return;
     try {
       const response = await axios.post(
         "http://localhost:4002/todo/create",
         { text: newTodo, completed: false },
         { withCredentials: true }
       );
-      setTodos([...todos, response.data.newTodo]);
+      setTodos((prev) => [...prev, response.data.newTodo]);
       setNewTodo("");
-    } catch (error) {
+    } catch {
       setError("Failed to create todo");
     }
   };
@@ -51,8 +52,8 @@ function Home() {
         { ...todo, completed: !todo.completed },
         { withCredentials: true }
       );
-      setTodos(todos.map((t) => (t._id === id ? response.data.todo : t)));
-    } catch (error) {
+      setTodos((prev) => prev.map((t) => (t._id === id ? response.data.todo : t)));
+    } catch {
       setError("Failed to update todo status");
     }
   };
@@ -62,22 +63,21 @@ function Home() {
       await axios.delete(`http://localhost:4002/todo/delete/${id}`, {
         withCredentials: true,
       });
-      setTodos(todos.filter((t) => t._id !== id));
-    } catch (error) {
+      setTodos((prev) => prev.filter((t) => t._id !== id));
+    } catch {
       setError("Failed to delete todo");
     }
   };
 
-  const navigateTo = useNavigate();
   const logout = async () => {
     try {
       await axios.get("http://localhost:4002/user/logout", {
         withCredentials: true,
       });
-      toast.success("User logged out successfully");
+      localStorage.removeItem("jwt"); // clear token
+      toast.success("Logged out successfully");
       navigateTo("/login");
-      localStorage.removeItem("jwt");
-    } catch (error) {
+    } catch {
       toast.error("Error logging out");
     }
   };
@@ -87,10 +87,9 @@ function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col items-center p-6">
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl p-6">
-        <h1 className="text-3xl font-bold text-center text-blue-600 mb-6">
-          Todo App
-        </h1>
+        <h1 className="text-3xl font-bold text-center text-blue-600 mb-6">Todo App</h1>
 
+        {/* Input */}
         <div className="flex mb-4 space-x-2">
           <input
             type="text"
@@ -108,15 +107,16 @@ function Home() {
           </button>
         </div>
 
-        {loading ? (
-          <div className="text-center text-blue-500 font-medium">Loading...</div>
-        ) : error ? (
-          <div className="text-center text-red-500 font-medium">{error}</div>
-        ) : (
+        {/* Error or Loading */}
+        {loading && <div className="text-center text-blue-500 font-medium">Loading...</div>}
+        {error && <div className="text-center text-red-500 font-medium">{error}</div>}
+
+        {/* Todos list */}
+        {!loading && !error && (
           <ul className="space-y-3">
-            {todos.map((todo, index) => (
+            {todos.map((todo) => (
               <li
-                key={todo._id || index}
+                key={todo._id}
                 className="flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow transition"
               >
                 <div className="flex items-center space-x-3">
@@ -126,11 +126,7 @@ function Home() {
                     onChange={() => todoStatus(todo._id)}
                     className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
-                  <span
-                    className={`text-lg ${
-                      todo.completed ? "line-through text-gray-400" : "text-gray-800"
-                    }`}
-                  >
+                  <span className={`text-lg ${todo.completed ? "line-through text-gray-400" : "text-gray-800"}`}>
                     {todo.text}
                   </span>
                 </div>
@@ -145,10 +141,12 @@ function Home() {
           </ul>
         )}
 
+        {/* Remaining Todos */}
         <p className="mt-4 text-center text-sm text-gray-500 font-medium">
           {remainingTodos} remaining todos
         </p>
 
+        {/* Logout */}
         <button
           onClick={logout}
           className="mt-6 w-full bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600 transition shadow"
